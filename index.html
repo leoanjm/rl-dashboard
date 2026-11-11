@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>RL Dashboard</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1117;--ink:#e6edf3;--muted:#8b949e;--line:#30363d}
+:root[data-theme="light"]{color-scheme:light;--bg:#f6f8fa;--ink:#1f2328;--muted:#57606a;--line:#d0d7de}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,sans-serif}
+main{max-width:380px;margin:12vh auto;padding:0 16px}h1{font-size:20px;margin:0 0 6px}p{color:var(--muted)}
+input,button{font:inherit;border-radius:8px;padding:10px}input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+#unlock{width:100%;border:0;background:#1f6feb;color:white;margin-top:10px;cursor:pointer}
+#theme{display:block;margin:0 0 18px auto;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+#error{min-height:24px;color:#f85149}:focus-visible{outline:2px solid #58a6ff;outline-offset:2px}
+</style>
+</head>
+<body>
+<main id="encrypted-app-login">
+<button id="theme" type="button"></button>
+<h1>RL Dashboard</h1>
+<p>비밀번호를 입력하면 대시보드가 열립니다.</p>
+<form id="login"><input id="password" type="password" aria-label="비밀번호" placeholder="비밀번호" autocomplete="current-password" required>
+<button id="unlock" type="submit">열기</button></form>
+<p id="error" role="alert"></p>
+</main>
+<script>
+try{document.documentElement.dataset.theme=localStorage.getItem('rl_theme')==='light'?'light':'dark'}catch(_){}
+function themeLabel(){document.getElementById('theme').textContent=document.documentElement.dataset.theme==='light'?'☾ 어두운 테마':'☀ 밝은 테마'}
+themeLabel();document.getElementById('theme').onclick=()=>{const t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('rl_theme',t)}catch(_){}themeLabel()};
+const APP_URL='https://raw.githubusercontent.com/leoanjm/rl-supervisor/live-data/app.json';
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function decryptApp(blob,password){
+ if(blob.v!==2||blob.cipher!=='AES-256-GCM'||blob.kdf!=='PBKDF2-HMAC-SHA256'||blob.compression!=='gzip')throw Error('unsupported envelope');
+ const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+ const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(blob.salt),iterations:blob.iterations,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+ const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(blob.iv)},key,b64(blob.data));
+ const stream=new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'));
+ const html=JSON.parse(await new Response(stream).text());
+ if(typeof html!=='string'||!html.startsWith('<!DOCTYPE html>'))throw Error('invalid application');
+ return html;
+}
+let unlocking=false;
+async function unlockApp(password){
+ if(unlocking)return;unlocking=true;
+ const error=document.getElementById('error'),button=document.getElementById('unlock');button.disabled=true;error.textContent='대시보드 여는 중…';
+ try{
+  const response=await fetch(APP_URL,{cache:'no-store'});if(!response.ok)throw Error('download');
+  const html=await decryptApp(await response.json(),password);
+  sessionStorage.setItem('rl_pass',password);
+  document.open();document.write(html);document.close();
+ }catch(_){
+  sessionStorage.removeItem('rl_pass');error.textContent='비밀번호가 틀렸거나 대시보드를 불러올 수 없습니다.';button.disabled=false;unlocking=false;
+ }
+}
+document.getElementById('login').onsubmit=e=>{e.preventDefault();unlockApp(document.getElementById('password').value)};
+const saved=sessionStorage.getItem('rl_pass');if(saved){document.getElementById('password').value=saved;unlockApp(saved)}
+</script>
+</body>
+</html>
