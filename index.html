@@ -29,7 +29,7 @@ input,button{font:inherit;border-radius:8px;padding:10px}input{width:100%;backgr
 try{document.documentElement.dataset.theme=localStorage.getItem('rl_theme')==='light'?'light':'dark'}catch(_){}
 function themeLabel(){document.getElementById('theme').textContent=document.documentElement.dataset.theme==='light'?'☾ 어두운 테마':'☀ 밝은 테마'}
 themeLabel();document.getElementById('theme').onclick=()=>{const t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('rl_theme',t)}catch(_){}themeLabel()};
-const APP_URL='https://raw.githubusercontent.com/leoanjm/rl-supervisor/live-data/app.json';
+const APP_URL='https://raw.githubusercontent.com/leoanjm/rl-dashboard/live-data/app.json';
 const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function decryptApp(blob,password){
  if(blob.v!==2||blob.cipher!=='AES-256-GCM'||blob.kdf!=='PBKDF2-HMAC-SHA256'||blob.compression!=='gzip')throw Error('unsupported envelope');
