@@ -46,7 +46,7 @@ async function unlockApp(password){
  if(unlocking)return;unlocking=true;
  const error=document.getElementById('error'),button=document.getElementById('unlock');button.disabled=true;error.textContent='대시보드 여는 중…';
  try{
-  const response=await fetch(APP_URL,{cache:'no-store'});if(!response.ok)throw Error('download');
+  const response=await fetch(APP_URL+'?poll='+Math.floor(Date.now()/30000),{cache:'no-store'});if(!response.ok)throw Error('download');
   const html=await decryptApp(await response.json(),password);
   sessionStorage.setItem('rl_pass',password);
   document.open();document.write(html);document.close();
